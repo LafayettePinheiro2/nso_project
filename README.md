@@ -1,1 +1,0 @@
-# nso_project
