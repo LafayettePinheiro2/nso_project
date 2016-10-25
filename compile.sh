@@ -5,6 +5,4 @@ gcc -o worker worker.c
 gcc -o proc-curto proc-curto.c
 gcc -o proc-medio proc-medio.c
 gcc -o proc-longo proc-longo.c
-
-
-
+ipcrm --all=msg

@@ -4,21 +4,21 @@
 #include <sys/msg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include <stdlib.h>       
+#include <unistd.h>
 
 int main() {
-    int pid, idfila, estado;
+    int pid, idfila_client_manager, idfila_manager_client;
 
     struct mensagem {
         long pid;
         char msg[300];
     };
-    struct mensagem mensagem_env;
+    struct mensagem mensagem_env, mensagem_rec;
+    
     FILE *arq;
-
     char *buffer, url[] = "tasks.txt";
     long length;
-
 
     //abre arquivo
     arq = fopen(url, "r");
@@ -35,26 +35,38 @@ int main() {
             fread(buffer, 1, length, arq);
         }
     }
-
     fclose(arq);
 
-
-    /* cria */
-    if ((idfila = msgget(4841, IPC_CREAT | 0x1B6)) < 0) {
+    /* cria fila para mandar msgs para manager*/
+    if ((idfila_client_manager = msgget(4841, IPC_CREAT | 0x1B6)) < 0) {
+        printf("erro na criacao da fila\n");
+        exit(1);
+    }
+    
+    /* cria fila para receber msgs de manager*/
+    if ((idfila_manager_client = msgget(4840, IPC_CREAT | 0x1B6)) < 0) {
         printf("erro na criacao da fila\n");
         exit(1);
     }
 
     mensagem_env.pid = getpid();
     strcpy(mensagem_env.msg, buffer);
-    if(msgsnd(idfila, &mensagem_env, sizeof (mensagem_env) - sizeof (long), 0) < 0){
+    if(msgsnd(idfila_client_manager, &mensagem_env, sizeof (mensagem_env) - sizeof (long), 0) < 0){
         printf("Erro ao enviar mensagem para Manager");
         exit(1);
     }
 
-
     free(buffer);
-//    system("ipcrm --all=msg");
+    
+//     recebe mensagem do manager com tempo de execucao da aplicacao
+    if(msgrcv(idfila_manager_client, &mensagem_rec, sizeof (mensagem_rec) - sizeof (long), 0, 0)< 0){
+        printf("Erro ao receber mensagem do manager"); 
+    }
+    
+    printf("Tempo de execucao da aplicacao: %s", mensagem_rec.msg);
+    
+    system("ipcrm --all=msg");
 
+    exit(1);
     return (1);
 }

@@ -12,9 +12,11 @@
         <group>
             <file>file:/home/lafayette/Documents/TrabalhoSO/worker.c</file>
             <file>file:/home/lafayette/Documents/TrabalhoSO/client.c</file>
+            <file>file:/home/lafayette/Documents/TrabalhoSO/codigos_soltos.c</file>
             <file>file:/home/lafayette/Documents/TrabalhoSO/tasks.txt</file>
+            <file>file:/home/lafayette/Documents/TrabalhoSO/proc-longo.c</file>
             <file>file:/home/lafayette/Documents/TrabalhoSO/manager.c</file>
-            <file>file:/home/lafayette/Documents/TrabalhoSO/proc-curto.c</file>
+            <file>file:/home/lafayette/Documents/TrabalhoSO/proc-medio.c</file>
         </group>
     </open-files>
 </project-private>
