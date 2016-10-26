@@ -11,16 +11,15 @@
 #include <time.h>
 #include <sys/wait.h>
 
-//Numero de tarefas que podem ser lidas
-#define N 20
+//Numero de tarefas que podem ser lidas do arquivo
+#define N 25
 
 int main() {
 
-    // usa como delimitadores o espaco em branco e o fim da linha
-    char *token, *delim = " \n";
+    char *token, *delim = " \n", remove_fila[80];
 
     int pid[5], i = 0, j = 0, curtas = 0, medias = 0, longas = 0, estado, total_tarefas, tarefas_executadas = 0;
-    int idfila_client_manager, idfila_manager_client, idfila_manager_worker, idfila_worker_manager, idfila_fim_trabalho;
+    int idfila_client_manager, idfila_manager_client, idfila_manager_worker, idfila_worker_manager;
 
     struct mensagem {
         long pid;
@@ -53,13 +52,13 @@ int main() {
         printf("Erro ao receber mensagem do cliente"); 
     }
     
-    //Pega tempo do inicio da execucao
+    //Pega tempo de inicio da execucao
     tempo_inicio = time(NULL);
 
     //iterando a mensagem linha por linha	
     token = strtok(mensagem_rec.msg, delim);
 
-    while (token!= NULL) {
+    while (token != NULL) {
         j = (int) i / 2;
 
         if (isdigit(token[0])) {
@@ -75,7 +74,6 @@ int main() {
     }
     
     total_tarefas = j;
-    printf("TOTAL DE TAREFAS (COMECA DO 0) -> %d\n", total_tarefas);
     
     //cria 3 arrays separando as tarefas pelo tipo
     for (i = 0; i <= j; i++) {
@@ -110,7 +108,7 @@ int main() {
         } 
     } 
     
-    /* cria fila para enviar do manager -> workers */
+    /* cria fila para enviar do manager para workers */
     if ((idfila_manager_worker = msgget(4842, IPC_CREAT | 0x1B6)) < 0) {
         printf("Erro na criacao da fila de msg do manager para workers\n");
     }
@@ -166,8 +164,10 @@ int main() {
         } 
     }
     
+    // sinalizar workers que tarefas acabaram
     i = 0;
-    while(i < 4){
+    while(i < N){
+        // se workers ainda estiverem terminando ultimas tarefas
         if(msgrcv(idfila_worker_manager, &mensagem_rec, sizeof (mensagem_rec) - sizeof (long), 0, IPC_NOWAIT)>= 0){
             if(mensagem_rec.pid == 999){
                 tarefas_executadas++;
@@ -176,8 +176,7 @@ int main() {
         }
         
         if(total_tarefas == tarefas_executadas){  
-            //sinaliza para workers que trabalho acabou
-            //enviando uma mensagem para cada worker
+            //sinaliza para workers que trabalho acabou enviando uma mensagem para cada worker
             mensagem_env.pid = 999;
             strcpy(mensagem_env.msg, "fim do trabalho");
             if(msgsnd(idfila_manager_worker, &mensagem_env, sizeof (mensagem_env) - sizeof (long), 0) < 0){
@@ -188,16 +187,17 @@ int main() {
         
     }
        
-    //espera pelo exit dos processos filho
+    //espera pelo exit dos workers
     wait(&estado);
     wait(&estado);
     wait(&estado);
     wait(&estado);
     
-    tempo_fim = time(NULL);
+    // pega tempo do fim da execucao e faz a diferenca
+    tempo_fim  = time(NULL);
     tempo_exec = difftime(tempo_fim, tempo_inicio);
     
-    // avisa para cliente fim da execucao e tempo de execucao
+    // avisa para cliente o fim da execucao e o tempo de execucao
     mensagem_env.pid = 1;
     sprintf(mensagem_env.msg, "%f", tempo_exec);
     if(msgsnd(idfila_manager_client, &mensagem_env, sizeof (mensagem_env) - sizeof (long), 0) < 0){
@@ -205,6 +205,14 @@ int main() {
     } 
     
     printf("TAREFAS EXECUTADAS: %d\n", tarefas_executadas+1);
-    exit(1);
+    printf("TAREFAS CURTAS: %d\n", curtas);
+    printf("TAREFAS MEDIAS: %d\n", medias);
+    printf("TAREFAS LONGAS: %d\n", longas);
+    
+    //remove filas de mensagem criadas pelo manager
+    sprintf(remove_fila, "ipcrm -q %d", idfila_manager_worker);  
+    system(remove_fila);
+    sprintf(remove_fila, "ipcrm -q %d", idfila_worker_manager);  
+    system(remove_fila);
     return (1);
 }

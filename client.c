@@ -9,7 +9,8 @@
 
 int main() {
     int pid, idfila_client_manager, idfila_manager_client;
-
+    double tempo_exec;
+    char remove_fila[80];
     struct mensagem {
         long pid;
         char msg[300];
@@ -43,30 +44,34 @@ int main() {
         exit(1);
     }
     
-    /* cria fila para receber msgs de manager*/
+    /* cria fila para receber msgs do manager*/
     if ((idfila_manager_client = msgget(4840, IPC_CREAT | 0x1B6)) < 0) {
         printf("erro na criacao da fila\n");
         exit(1);
     }
 
+    // Envia mensagem com tarefas do arquivo para manager
     mensagem_env.pid = getpid();
     strcpy(mensagem_env.msg, buffer);
     if(msgsnd(idfila_client_manager, &mensagem_env, sizeof (mensagem_env) - sizeof (long), 0) < 0){
         printf("Erro ao enviar mensagem para Manager");
-        exit(1);
     }
 
     free(buffer);
     
-//     recebe mensagem do manager com tempo de execucao da aplicacao
+    // Recebe mensagem do manager com tempo de execucao da aplicacao
     if(msgrcv(idfila_manager_client, &mensagem_rec, sizeof (mensagem_rec) - sizeof (long), 0, 0)< 0){
         printf("Erro ao receber mensagem do manager"); 
     }
-    
-    printf("Tempo de execucao da aplicacao: %s", mensagem_rec.msg);
-    
-    system("ipcrm --all=msg");
 
-    exit(1);
+    sscanf(mensagem_rec.msg, "%lf", &tempo_exec);
+    
+    printf("Tempo de execucao da aplicacao: %.2f segundos", tempo_exec); 
+    
+    //remove filas de mensagem criadas pelo client
+    sprintf(remove_fila, "ipcrm -q %d", idfila_client_manager);  
+    system(remove_fila);
+    sprintf(remove_fila, "ipcrm -q %d", idfila_manager_client);  
+    system(remove_fila);
     return (1);
 }
